@@ -8,7 +8,7 @@ import json
 from django.contrib.admin.helpers import InlineAdminFormSet, InlineAdminForm, AdminField
 from django.utils.encoding import smart_str
 from django.utils.text import capfirst
-from django.utils.translation import ugettext
+from django.utils.translation import gettext
 
 from polymorphic.formsets import BasePolymorphicModelFormSet
 
@@ -93,7 +93,7 @@ class PolymorphicInlineAdminFormSet(InlineAdminFormSet):
             'name': '#%s' % self.formset.prefix,
             'options': {
                 'prefix': self.formset.prefix,
-                'addText': ugettext('Add another %(verbose_name)s') % {
+                'addText': gettext('Add another %(verbose_name)s') % {
                     'verbose_name': capfirst(verbose_name),
                 },
                 'childTypes': [
@@ -102,7 +102,7 @@ class PolymorphicInlineAdminFormSet(InlineAdminFormSet):
                         'name': smart_str(model._meta.verbose_name)
                     } for model in self.formset.child_forms.keys()
                 ],
-                'deleteText': ugettext('Remove'),
+                'deleteText': gettext('Remove'),
             }
         })
 
