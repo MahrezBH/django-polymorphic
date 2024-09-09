@@ -4,7 +4,8 @@ The child admin displays the change/delete view of the subclass model.
 import inspect
 
 from django.contrib import admin
-from django.core.urlresolvers import resolve
+from django.urls import resolve
+
 from django.utils import six
 from django.utils.translation import gettext_lazy as _
 
