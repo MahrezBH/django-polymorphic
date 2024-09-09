@@ -8,7 +8,8 @@ import copy
 import django
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q, FieldDoesNotExist
+from django.db.models import Q
+from django.core.exceptions import FieldDoesNotExist
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from django.db.models.fields.related import RelatedField
@@ -271,4 +272,3 @@ def _create_model_filter_Q(modellist, not_instance_of=False, using=DEFAULT_DB_AL
     if not_instance_of:
         q_ored = ~q_ored
     return q_ored
-
