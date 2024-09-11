@@ -1,35 +1,31 @@
-# -*- coding: utf-8 -*-
-""" PolymorphicModel Meta Class
-    Please see README.rst or DOCS.rst or http://chrisglass.github.com/django_polymorphic/
 """
-from __future__ import absolute_import
-
+PolymorphicModel Meta Class
+"""
+import inspect
 import os
 import sys
-import inspect
+import warnings
 
-import django
 from django.db import models
 from django.db.models.base import ModelBase
-from django.db.models.manager import ManagerDescriptor
 
 from .managers import PolymorphicManager
 from .query import PolymorphicQuerySet
 
 # PolymorphicQuerySet Q objects (and filter()) support these additional key words.
 # These are forbidden as field names (a descriptive exception is raised)
-POLYMORPHIC_SPECIAL_Q_KWORDS = ['instance_of', 'not_instance_of']
+POLYMORPHIC_SPECIAL_Q_KWORDS = ["instance_of", "not_instance_of"]
 
-DUMPDATA_COMMAND = os.path.join('django', 'core', 'management', 'commands', 'dumpdata.py')
+DUMPDATA_COMMAND = os.path.join("django", "core", "management", "commands", "dumpdata.py")
 
-try:
-    from django.db.models.manager import AbstractManagerDescriptor  # Django 1.5
-except ImportError:
-    AbstractManagerDescriptor = None
+
+class ManagerInheritanceWarning(RuntimeWarning):
+    pass
 
 
 ###################################################################################
 # PolymorphicModel meta class
+
 
 class PolymorphicModelBase(ModelBase):
     """
@@ -55,50 +51,20 @@ class PolymorphicModelBase(ModelBase):
     PolymorphicQuerySet.
     """
 
-    def __new__(self, model_name, bases, attrs):
-        # print; print '###', model_name, '- bases:', bases
-
+    def __new__(self, model_name, bases, attrs, **kwargs):
         # Workaround compatibility issue with six.with_metaclass() and custom Django model metaclasses:
-        if not attrs and model_name == 'NewBase':
-            if django.VERSION < (1, 5):
-                # Let Django fully ignore the class which is inserted in between.
-                # Django 1.5 fixed this, see https://code.djangoproject.com/ticket/19688
-                attrs['__module__'] = 'django.utils.six'
-                attrs['Meta'] = type('Meta', (), {'abstract': True})
-            return super(PolymorphicModelBase, self).__new__(self, model_name, bases, attrs)
+        if not attrs and model_name == "NewBase":
+            return super().__new__(self, model_name, bases, attrs, **kwargs)
 
         # create new model
-        new_class = self.call_superclass_new_method(model_name, bases, attrs)
+        new_class = self.call_superclass_new_method(model_name, bases, attrs, **kwargs)
 
         # check if the model fields are all allowed
         self.validate_model_fields(new_class)
 
-        # create list of all managers to be inherited from the base classes
-        if django.VERSION < (1, 10):
-            inherited_managers = new_class.get_inherited_managers(attrs)
-
-            # add the managers to the new model
-            for source_name, mgr_name, manager in inherited_managers:
-                # print '** add inherited manager from model %s, manager %s, %s' % (source_name, mgr_name, manager.__class__.__name__)
-                new_manager = manager._copy_to_model(new_class)
-                if mgr_name == '_default_manager':
-                    new_class._default_manager = new_manager
-                else:
-                    new_class.add_to_class(mgr_name, new_manager)
-
-            # get first user defined manager; if there is one, make it the _default_manager
-            # this value is used by the related objects, restoring access to custom queryset methods on related objects.
-            user_manager = self.get_first_user_defined_manager(new_class)
-            if user_manager:
-                # print '## add default manager', type(def_mgr)
-                new_class._default_manager = user_manager._copy_to_model(new_class)
-                new_class._default_manager._inherited = False   # the default mgr was defined by the user, not inherited
-
         # validate resulting default manager
-        if django.VERSION >= (1, 10) and not new_class._meta.abstract:
-            self.validate_model_manager(new_class.objects, model_name, 'objects')
-        else:
-            self.validate_model_manager(new_class._default_manager, model_name, '_default_manager')
+        if not new_class._meta.abstract and not new_class._meta.swapped:
+            self.validate_model_manager(new_class.objects, model_name, "objects")
 
         # for __init__ function of this class (monkeypatching inheritance accessors)
         new_class.polymorphic_super_sub_accessors_replaced = False
@@ -112,84 +78,8 @@ class PolymorphicModelBase(ModelBase):
 
         return new_class
 
-    if django.VERSION < (1, 10):
-        def get_inherited_managers(self, attrs):
-            """
-            Return list of all managers to be inherited/propagated from the base classes;
-            use correct mro, only use managers with _inherited==False (they are of no use),
-            skip managers that are overwritten by the user with same-named class attributes (in attrs)
-            """
-            # print "** ", self.__name__
-            add_managers = []
-            add_managers_keys = set()
-            for base in self.__mro__[1:]:
-                if not issubclass(base, models.Model):
-                    continue
-                if not getattr(base, 'polymorphic_model_marker', None):
-                    continue  # leave managers of non-polym. models alone
-
-                for key, manager in base.__dict__.items():
-                    if type(manager) == models.manager.ManagerDescriptor:
-                        manager = manager.manager
-
-                    if AbstractManagerDescriptor is not None:
-                        # Django 1.4 unconditionally assigned managers to a model. As of Django 1.5 however,
-                        # the abstract models don't get any managers, only a AbstractManagerDescriptor as substitute.
-                        # Pretend that the manager is still there, so all code works like it used to.
-                        if type(manager) == AbstractManagerDescriptor and base.__name__ == 'PolymorphicModel':
-                            model = manager.model
-                            if key == 'objects':
-                                manager = PolymorphicManager()
-                                manager.model = model
-                            elif key == 'base_objects':
-                                manager = models.Manager()
-                                manager.model = model
-
-                    if not isinstance(manager, models.Manager):
-                        continue
-                    if key == '_base_manager':
-                        continue       # let Django handle _base_manager
-                    if key in attrs:
-                        continue
-                    if key in add_managers_keys:
-                        continue       # manager with that name already added, skip
-                    if manager._inherited:
-                        continue             # inherited managers (on the bases) have no significance, they are just copies
-                    # print '## {0} {1}'.format(self.__name__, key)
-
-                    if isinstance(manager, PolymorphicManager):  # validate any inherited polymorphic managers
-                        self.validate_model_manager(manager, self.__name__, key)
-                    add_managers.append((base.__name__, key, manager))
-                    add_managers_keys.add(key)
-
-            # The ordering in the base.__dict__ may randomly change depending on which method is added.
-            # Make sure base_objects is on top, and 'objects' and '_default_manager' follow afterwards.
-            # This makes sure that the _base_manager is also assigned properly.
-            add_managers = sorted(add_managers, key=lambda item: (item[1].startswith('_'), item[1]))
-            return add_managers
-
-        @classmethod
-        def get_first_user_defined_manager(mcs, new_class):
-            # See if there is a manager attribute directly stored at this inheritance level.
-            mgr_list = []
-            for key, val in new_class.__dict__.items():
-                if isinstance(val, ManagerDescriptor):
-                    val = val.manager
-                if not isinstance(val, PolymorphicManager):
-                    continue
-
-                mgr_list.append((val.creation_counter, key, val))
-
-            # if there are user defined managers, use first one as _default_manager
-            if mgr_list:
-                _, manager_name, manager = sorted(mgr_list)[0]
-                # sys.stderr.write( '\n# first user defined manager for model "{model}":\n#  "{mgrname}": {mgr}\n#  manager model: {mgrmodel}\n\n'
-                #    .format( model=self.__name__, mgrname=manager_name, mgr=manager, mgrmodel=manager.model ) )
-                return manager
-            return None
-
     @classmethod
-    def call_superclass_new_method(self, model_name, bases, attrs):
+    def call_superclass_new_method(self, model_name, bases, attrs, **kwargs):
         """call __new__ method of super class and return the newly created class.
         Also work around a limitation in Django's ModelBase."""
         # There seems to be a general limitation in Django's app_label handling
@@ -197,17 +87,19 @@ class PolymorphicModelBase(ModelBase):
         # We run into this problem if polymorphic.py is located in a top-level directory
         # which is directly in the python path. To work around this we temporarily set
         # app_label here for PolymorphicModel.
-        meta = attrs.get('Meta', None)
-        do_app_label_workaround = (meta
-                                   and attrs['__module__'] == 'polymorphic'
-                                   and model_name == 'PolymorphicModel'
-                                   and getattr(meta, 'app_label', None) is None)
+        meta = attrs.get("Meta", None)
+        do_app_label_workaround = (
+            meta
+            and attrs["__module__"] == "polymorphic"
+            and model_name == "PolymorphicModel"
+            and getattr(meta, "app_label", None) is None
+        )
 
         if do_app_label_workaround:
-            meta.app_label = 'poly_dummy_app_label'
-        new_class = super(PolymorphicModelBase, self).__new__(self, model_name, bases, attrs)
+            meta.app_label = "poly_dummy_app_label"
+        new_class = super().__new__(self, model_name, bases, attrs, **kwargs)
         if do_app_label_workaround:
-            del(meta.app_label)
+            del meta.app_label
         return new_class
 
     @classmethod
@@ -215,8 +107,10 @@ class PolymorphicModelBase(ModelBase):
         "check if all fields names are allowed (i.e. not in POLYMORPHIC_SPECIAL_Q_KWORDS)"
         for f in new_class._meta.fields:
             if f.name in POLYMORPHIC_SPECIAL_Q_KWORDS:
-                e = 'PolymorphicModel: "%s" - field name "%s" is not allowed in polymorphic models'
-                raise AssertionError(e % (new_class.__name__, f.name))
+                raise AssertionError(
+                    f'PolymorphicModel: "{new_class.__name__}" - '
+                    f'field name "{f.name}" is not allowed in polymorphic models'
+                )
 
     @classmethod
     def validate_model_manager(self, manager, model_name, manager_name):
@@ -224,33 +118,66 @@ class PolymorphicModelBase(ModelBase):
         and its querysets from PolymorphicQuerySet - throw AssertionError if not"""
 
         if not issubclass(type(manager), PolymorphicManager):
-            e = 'PolymorphicModel: "' + model_name + '.' + manager_name + '" manager is of type "' + type(manager).__name__
-            e += '", but must be a subclass of PolymorphicManager'
-            raise AssertionError(e)
-        if not getattr(manager, 'queryset_class', None) or not issubclass(manager.queryset_class, PolymorphicQuerySet):
-            e = 'PolymorphicModel: "' + model_name + '.' + manager_name + '" (PolymorphicManager) has been instantiated with a queryset class which is'
-            e += ' not a subclass of PolymorphicQuerySet (which is required)'
-            raise AssertionError(e)
+            extra = ""
+            e = (
+                f'PolymorphicModel: "{model_name}.{manager_name}" manager is of type "{type(manager).__name__}", '
+                f"but must be a subclass of PolymorphicManager.{extra} to support retrieving subclasses"
+            )
+            warnings.warn(e, ManagerInheritanceWarning, stacklevel=3)
+            return manager
+
+        if not getattr(manager, "queryset_class", None) or not issubclass(
+            manager.queryset_class, PolymorphicQuerySet
+        ):
+            e = (
+                f'PolymorphicModel: "{model_name}.{manager_name}" has been instantiated with a queryset class '
+                f"which is not a subclass of PolymorphicQuerySet (which is required)"
+            )
+            warnings.warn(e, ManagerInheritanceWarning, stacklevel=3)
         return manager
 
-    # hack: a small patch to Django would be a better solution.
-    # Django's management command 'dumpdata' relies on non-polymorphic
-    # behaviour of the _default_manager. Therefore, we catch any access to _default_manager
-    # here and return the non-polymorphic default manager instead if we are called from 'dumpdata.py'
-    # Otherwise, the base objects will be upcasted to polymorphic models, and be outputted as such.
-    # (non-polymorphic default manager is 'base_objects' for polymorphic models).
-    # This way we don't need to patch django.core.management.commands.dumpdata
-    # for all supported Django versions.
-    if len(sys.argv) > 1 and sys.argv[1] == 'dumpdata':
-        # manage.py dumpdata is running
+    @property
+    def base_objects(self):
+        warnings.warn(
+            "Using PolymorphicModel.base_objects is deprecated.\n"
+            f"Use {self.__class__.__name__}.objects.non_polymorphic() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._base_objects
 
-        def __getattribute__(self, name):
-            if name == '_default_manager':
-                frm = inspect.stack()[1]  # frm[1] is caller file name, frm[3] is caller function name
-                if DUMPDATA_COMMAND in frm[1]:
-                    return self.base_objects
-                # caller_mod_name = inspect.getmodule(frm[0]).__name__  # does not work with python 2.4
-                # if caller_mod_name == 'django.core.management.commands.dumpdata':
+    @property
+    def _base_objects(self):
+        # Create a manager so the API works as expected. Just don't register it
+        # anymore in the Model Meta, so it doesn't substitute our polymorphic
+        # manager as default manager for the third level of inheritance when
+        # that third level doesn't define a manager at all.
+        manager = models.Manager()
+        manager.name = "base_objects"
+        manager.model = self
+        return manager
 
-            return super(PolymorphicModelBase, self).__getattribute__(name)
-    # TODO: investigate Django how this can be avoided
+    @property
+    def _default_manager(self):
+        if len(sys.argv) > 1 and sys.argv[1] == "dumpdata":
+            # TODO: investigate Django how this can be avoided
+            # hack: a small patch to Django would be a better solution.
+            # Django's management command 'dumpdata' relies on non-polymorphic
+            # behaviour of the _default_manager. Therefore, we catch any access to _default_manager
+            # here and return the non-polymorphic default manager instead if we are called from 'dumpdata.py'
+            # Otherwise, the base objects will be upcasted to polymorphic models, and be outputted as such.
+            # (non-polymorphic default manager is 'base_objects' for polymorphic models).
+            # This way we don't need to patch django.core.management.commands.dumpdata
+            # for all supported Django versions.
+            frm = inspect.stack()[1]  # frm[1] is caller file name, frm[3] is caller function name
+            if DUMPDATA_COMMAND in frm[1]:
+                return self._base_objects
+
+        manager = super()._default_manager
+        if not isinstance(manager, PolymorphicManager):
+            warnings.warn(
+                f"{self.__class__.__name__}._default_manager is not a PolymorphicManager",
+                ManagerInheritanceWarning,
+            )
+
+        return manager
