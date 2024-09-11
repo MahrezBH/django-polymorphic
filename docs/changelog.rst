@@ -1,6 +1,175 @@
 Changelog
 =========
 
+Changes in 3.1 (2021-11-18)
+---------------------------
+
+* Added support for Django 4.0.
+* Fixed crash when the admin "add type" view has no choices; will show a permission denied.
+* Fixed missing ``locale`` folder in sdist.
+* Fixed missing ``QuerySet.bulk_create(.., ignore_conflicts=True)`` parameter support.
+* Fixed ``FilteredRelation`` support.
+* Fixed supporting class keyword arguments in model definitions for ``__init_subclass__()``.
+* Fixed including ``polymorphic.tests.migrations`` in the sdist.
+* Fixed non-polymorphic parent handling, which has no ``_base_objects``.
+* Fixed missing ``widgets`` support for ``modelform_factory()``.
+* Fixed ``has_changed`` handling for ``polymorphic_ctype_id`` due to implicit str to int conversions.
+* Fixed ``Q`` object handling when lists are used (e.g. in django-advanced-filters_).
+* Fixed Django Admin support when using a script-prefix.
+
+Many thanks to everyone providing clear pull requests!
+
+
+Changes in 3.0.0 (2020-08-21)
+-----------------------------
+
+* Support for Django 3.X
+* Dropped support for python 2.X
+* A lot of various fixes and improvements by various authors. Thanks a lot!
+
+
+Changes in 2.1.2 (2019-07-15)
+-----------------------------
+
+* Fix ``PolymorphicInlineModelAdmin`` media jQuery include for Django 2.0+
+
+
+Changes in 2.1.1 (2019-07-15)
+-----------------------------
+
+* Fixed admin import error due to ``isort`` changes.
+
+
+Changes in 2.1 (2019-07-15)
+---------------------------
+
+* Added Django 2.2 support.
+* Changed ``.non_polymorphic()``, to use a different iterable class that completely cirvumvent polymorphic.
+* Changed SQL for ``instance_of`` filter: use ``IN`` statement instead of ``OR`` clauses.
+* Changed queryset iteration to implement ``prefetch_related()`` support.
+* Fixed Django 3.0 alpha compatibility.
+* Fixed compatibility with current django-extra-views_ in ``polymorphic.contrib.extra_views``.
+* Fixed ``prefetch_related()`` support on polymorphic M2M relations.
+* Fixed model subclass ``___`` selector for abstract/proxy models.
+* Fixed model subclass ``___`` selector for models with a custom ``OneToOneField(parent_link=True)``.
+* Fixed unwanted results on calling ``queryset.get_real_instances([])``.
+* Fixed unwanted ``TypeError`` exception when ``PolymorphicTypeInvalid`` should have raised.
+* Fixed hiding the add-button of polymorphic lines in the Django admin.
+* Reformatted all files with black
+
+
+Changes in 2.0.3 (2018-08-24)
+-----------------------------
+
+* Fixed admin crash for Django 2.1 with missing ``use_required_attribute``.
+
+
+Changes in 2.0.2 (2018-02-05)
+-----------------------------
+
+* Fixed manager inheritance behavior for Django 1.11, by automatically enabling ``Meta.manager_inheritance_from_future`` if it's not defined.
+  This restores the manager inheritance behavior that *django-polymorphic 1.3* provided for Django 1.x projects.
+* Fixed internal ``base_objects`` usage.
+
+
+Changes in 2.0.1 (2018-02-05)
+-----------------------------
+
+* Fixed manager inheritance detection for Django 1.11.
+
+  It's recommended to use ``Meta.manager_inheritance_from_future`` so Django 1.x code also inherit
+  the ``PolymorphicManager`` in all subclasses. Django 2.0 already does this by default.
+
+* Deprecated the ``base_objects`` manager. Use ``objects.non_polymorphic()`` instead.
+* Optimized detection for dumpdata behavior, avoiding the performance hit of ``__getattribute__()``.
+* Fixed test management commands
+
+
+Changes in 2.0 (2018-01-22)
+---------------------------
+
+* **BACKWARDS INCOMPATIBILITY:** Dropped Django 1.8 and 1.10 support.
+* **BACKWARDS INCOMPATIBILITY:** Removed old deprecated code from 1.0, thus:
+
+ * Import managers from ``polymorphic.managers`` (plural), not ``polymorphic.manager``.
+ * Register child models to the admin as well using ``@admin.register()`` or ``admin.site.register()``,
+   as this is no longer done automatically.
+
+* Added Django 2.0 support.
+
+Also backported into 1.3.1:
+
+* Added ``PolymorphicTypeUndefined`` exception for incomplete imported models.
+  When a data migration or import creates an polymorphic model,
+  the ``polymorphic_ctype_id`` field should be filled in manually too.
+  The ``polymorphic.utils.reset_polymorphic_ctype`` function can be used for that.
+* Added ``PolymorphicTypeInvalid`` exception when database was incorrectly imported.
+* Added ``polymorphic.utils.get_base_polymorphic_model()`` to find the base model for types.
+* Using ``base_model`` on the polymorphic admins is no longer required, as this can be autodetected.
+* Fixed manager errors for swappable models.
+* Fixed ``deleteText`` of ``|as_script_options`` template filter.
+* Fixed ``.filter(applabel__ModelName___field=...)`` lookups.
+* Fixed proxy model support in formsets.
+* Fixed error with .defer and child models that use the same parent.
+* Fixed error message when ``polymorphic_ctype_id`` is null.
+* Fixed fieldsets recursion in the admin.
+* Improved ``polymorphic.utils.reset_polymorphic_ctype()`` to accept models in random ordering.
+* Fix fieldsets handling in the admin (``declared_fieldsets`` is removed since Django 1.9)
+
+
+Version 1.3.1 (2018-04-16)
+--------------------------
+
+Backported various fixes from 2.x to support older Django versions:
+
+* Added ``PolymorphicTypeUndefined`` exception for incomplete imported models.
+  When a data migration or import creates an polymorphic model,
+  the ``polymorphic_ctype_id`` field should be filled in manually too.
+  The ``polymorphic.utils.reset_polymorphic_ctype`` function can be used for that.
+* Added ``PolymorphicTypeInvalid`` exception when database was incorrectly imported.
+* Added ``polymorphic.utils.get_base_polymorphic_model()`` to find the base model for types.
+* Using ``base_model`` on the polymorphic admins is no longer required, as this can be autodetected.
+* Fixed manager errors for swappable models.
+* Fixed ``deleteText`` of ``|as_script_options`` template filter.
+* Fixed ``.filter(applabel__ModelName___field=...)`` lookups.
+* Fixed proxy model support in formsets.
+* Fixed error with .defer and child models that use the same parent.
+* Fixed error message when ``polymorphic_ctype_id`` is null.
+* Fixed fieldsets recursion in the admin.
+* Improved ``polymorphic.utils.reset_polymorphic_ctype()`` to accept models in random ordering.
+* Fix fieldsets handling in the admin (``declared_fieldsets`` is removed since Django 1.9)
+
+
+Version 1.3 (2017-08-01)
+------------------------
+
+* **BACKWARDS INCOMPATIBILITY:** Dropped Django 1.4, 1.5, 1.6, 1.7, 1.9 and Python 2.6 support.
+  Only official Django releases (1.8, 1.10, 1.11) are supported now.
+* Allow expressions to pass unchanged in ``.order_by()``
+* Fixed Django 1.11 accessor checks (to support subclasses of ``ForwardManyToOneDescriptor``, like ``ForwardOneToOneDescriptor``)
+* Fixed polib syntax error messages in translations.
+
+
+Version 1.2 (2017-05-01)
+------------------------
+
+* Django 1.11 support.
+* Fixed ``PolymorphicInlineModelAdmin`` to explictly exclude ``polymorphic_ctype``.
+* Fixed Python 3 TypeError in the admin when preserving the query string.
+* Fixed Python 3 issue due to ``force_unicode()`` usage instead of ``force_text()``.
+* Fixed ``z-index`` attribute for admin menu appearance.
+
+
+Version 1.1 (2017-02-03)
+------------------------
+
+* Added class based formset views in ``polymorphic/contrib/extra_views``.
+* Added helper function ``polymorphic.utils.reset_polymorphic_ctype()``.
+  This eases the migration old existing models to polymorphic.
+* Fixed Python 2.6 issue.
+* Fixed Django 1.6 support.
+
+
 Version 1.0.2 (2016-10-14)
 --------------------------
 
@@ -268,6 +437,8 @@ It supports Django 1.1 up till 1.4 and Python 2.4 up till 2.7.
 For a detailed list of it's changes, see the :doc:`archived changelog <changelog_archive>`.
 
 .. _Grappelli: http://grappelliproject.com/
+.. _django-advanced-filters: https://github.com/modlinltd/django-advanced-filters
+.. _django-extra-views: https://github.com/AndrewIngram/django-extra-views
 .. _django-guardian: https://github.com/django-guardian/django-guardian
 .. _django-parler: https://github.com/django-parler/django-parler
 .. _django-reversion: https://github.com/etianen/django-reversion

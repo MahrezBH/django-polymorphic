@@ -5,6 +5,7 @@
 *.egg-info/
 *.egg/
 .coverage
+coverage.xml
 .project
 .idea/
 .pydevproject
@@ -15,3 +16,5 @@ build/
 dist/
 docs/_build/
 htmlcov/
+venv/
+.venv/

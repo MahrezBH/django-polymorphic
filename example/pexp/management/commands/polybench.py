@@ -1,42 +1,35 @@
-# -*- coding: utf-8 -*-
 """
 This module is a scratchpad for general development, testing & debugging
 """
 
-from django.core.management.base import NoArgsCommand
-from django.db import connection
-from pprint import pprint
 import sys
+import time
+from pprint import pprint
+
+from django.core.management import BaseCommand
+from django.db import connection
 from pexp.models import *
 
 num_objects = 1000
 
 
-def reset_queries():
-    if django.VERSION < (1, 8):
-        connection.queries = []
-    else:
-        connection.queries_log.clear()
-
-
 def show_queries():
-    print
-    print 'QUERIES:', len(connection.queries)
+    print()
+    print("QUERIES:", len(connection.queries))
     pprint(connection.queries)
-    print
-    reset_queries()
+    print()
+    connection.queries_log.clear()
 
-import time
 
 ###################################################################################
 # benchmark wrappers
 
 
-def print_timing(func, message='', iterations=1):
+def print_timing(func, message="", iterations=1):
     def wrapper(*arg):
         results = []
-        reset_queries()
-        for i in xrange(iterations):
+        connection.queries_log.clear()
+        for i in range(iterations):
             t1 = time.time()
             x = func(*arg)
             t2 = time.time()
@@ -45,28 +38,33 @@ def print_timing(func, message='', iterations=1):
         for r in results:
             res_sum += r
         median = res_sum / len(results)
-        print '%s%-19s: %.0f ms, %i queries' % (
-            message, func.func_name,
-            median,
-            len(connection.queries) / len(results)
+        print(
+            f"{message}{func.func_name:<19}: {median:.0f} ms, "
+            f"{len(connection.queries) / len(results):d} queries"
         )
         sys.stdout.flush()
+
     return wrapper
 
 
 def run_vanilla_any_poly(func, iterations=1):
-    f = print_timing(func, '     ', iterations)
+    f = print_timing(func, "     ", iterations)
     f(NormalModelC)
-    f = print_timing(func, 'poly ', iterations)
+    f = print_timing(func, "poly ", iterations)
     f(TestModelC)
 
 
 ###################################################################################
 # benchmarks
 
+
 def bench_create(model):
-    for i in xrange(num_objects):
-        model.objects.create(field1='abc' + str(i), field2='abcd' + str(i), field3='abcde' + str(i))
+    for i in range(num_objects):
+        model.objects.create(
+            field1=f"abc{i}",
+            field2=f"abcd{i}",
+            field3=f"abcde{i}",
+        )
     # print 'count:',model.objects.count()
 
 
@@ -76,7 +74,7 @@ def bench_load1(model):
 
 
 def bench_load1_short(model):
-    for i in xrange(num_objects / 100):
+    for i in range(num_objects / 100):
         for o in model.objects.all()[:100]:
             pass
 
@@ -89,7 +87,7 @@ def bench_load2(model):
 
 
 def bench_load2_short(model):
-    for i in xrange(num_objects / 100):
+    for i in range(num_objects / 100):
         for o in model.objects.all()[:100]:
             f1 = o.field1
             f2 = o.field2
@@ -99,23 +97,22 @@ def bench_load2_short(model):
 def bench_delete(model):
     model.objects.all().delete()
 
+
 ###################################################################################
 # Command
 
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     help = ""
 
     def handle_noargs(self, **options):
         func_list = [
             (bench_delete, 1),
             (bench_create, 1),
-            (bench_load1,  5),
+            (bench_load1, 5),
             (bench_load1_short, 5),
             (bench_load2, 5),
-            (bench_load2_short, 5)
+            (bench_load2_short, 5),
         ]
         for f, iterations in func_list:
             run_vanilla_any_poly(f, iterations=iterations)
-
-        print

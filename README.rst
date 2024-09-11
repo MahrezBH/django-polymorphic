@@ -1,9 +1,14 @@
-.. image::  https://travis-ci.org/django-polymorphic/django-polymorphic.png?branch=master
-    :target: http://travis-ci.org/django-polymorphic/django-polymorphic
+.. image::  https://github.com/jazzband/django-polymorphic/actions/workflows/test.yml/badge.svg
+    :target: https://github.com/jazzband/django-polymorphic/actions/workflows/test.yml
 .. image:: https://img.shields.io/pypi/v/django-polymorphic.svg
     :target: https://pypi.python.org/pypi/django-polymorphic/
-.. image:: https://img.shields.io/codecov/c/github/django-polymorphic/django-polymorphic/master.svg
-    :target: https://codecov.io/github/django-polymorphic/django-polymorphic?branch=master
+.. image:: https://img.shields.io/codecov/c/github/jazzband/django-polymorphic/master.svg
+    :target: https://codecov.io/github/jazzband/django-polymorphic?branch=master
+.. image:: https://readthedocs.org/projects/django-polymorphic/badge/?version=stable
+    :target: https://django-polymorphic.readthedocs.io/en/stable/
+.. image:: https://jazzband.co/static/img/badge.svg
+   :target: https://jazzband.co/
+   :alt: Jazzband
 
 Polymorphic Models for Django
 =============================
@@ -46,20 +51,22 @@ Features
 * Full admin integration.
 * ORM integration:
 
- * support for ForeignKey, ManyToManyField, OneToOneField descriptors.
- * Filtering/ordering of inherited models (``ArtProject___artist``).
- * Filtering model types: ``instance_of(...)`` and ``not_instance_of(...)``
- * Combining querysets of different models (``qs3 = qs1 | qs2``)
- * Support for custom user-defined managers.
-
+  * support for ForeignKey, ManyToManyField, OneToOneField descriptors.
+  * Filtering/ordering of inherited models (``ArtProject___artist``).
+  * Filtering model types: ``instance_of(...)`` and ``not_instance_of(...)``
+  * Combining querysets of different models (``qs3 = qs1 | qs2``)
+  * Support for custom user-defined managers.
 * Uses the minumum amount of queries needed to fetch the inherited models.
 * Disabling polymorphic behavior when needed.
 
-While *django-polymorphic* makes subclassed models easy to use in Django,
+
+**Note:** While *django-polymorphic* makes subclassed models easy to use in Django,
 we still encourage to use them with caution. Each subclassed model will require
 Django to perform an ``INNER JOIN`` to fetch the model fields from the database.
 While taking this in mind, there are valid reasons for using subclassed models.
 That's what this library is designed for!
+
+The current release of *django-polymorphic* supports Django 2.2 - 4.0 on Python 3.6+.
 
 For more information, see the `documentation at Read the Docs <https://django-polymorphic.readthedocs.io/>`_.
 
