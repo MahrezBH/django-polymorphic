@@ -11,7 +11,7 @@ manager class, just derive your manager from ``PolymorphicManager`` instead of
 explicitly add the default manager first, and then your custom manager::
 
     from polymorphic.models import PolymorphicModel
-    from polymorphic.manager import PolymorphicManager
+    from polymorphic.managers import PolymorphicManager
 
     class TimeOrderedManager(PolymorphicManager):
         def get_queryset(self):
@@ -32,8 +32,6 @@ Django as automatic manager for several purposes, including accessing
 related objects. It must not filter objects and it's safest to use
 the plain ``PolymorphicManager`` here.
 
-    Note that get_query_set is deprecated in Django 1.8 and creates warnings in Django 1.7.
-
 Manager Inheritance
 -------------------
 
@@ -43,7 +41,7 @@ managers defined in polymorphic base models continue to work as
 expected in models inheriting from this base model::
 
     from polymorphic.models import PolymorphicModel
-    from polymorphic.manager import PolymorphicManager
+    from polymorphic.managers import PolymorphicManager
 
     class TimeOrderedManager(PolymorphicManager):
         def get_queryset(self):
@@ -67,9 +65,6 @@ ArtProject inherited the managers ``objects`` and ``objects_ordered`` from Proje
 ``ArtProject.objects_ordered.all()`` will return all art projects ordered
 regarding their start time and ``ArtProject.objects_ordered.most_recent()``
 will return the ten most recent art projects.
-.
-
-    Note that get_query_set is deprecated in Django 1.8 and creates warnings in Django 1.7.
 
 Using a Custom Queryset Class
 -----------------------------
@@ -80,13 +75,13 @@ you may define your own custom queryset classes. Just use PolymorphicQuerySet
 instead of Django's QuerySet as the base class::
 
         from polymorphic.models import PolymorphicModel
-        from polymorphic.manager import PolymorphicManager
+        from polymorphic.managers import PolymorphicManager
         from polymorphic.query import PolymorphicQuerySet
 
         class MyQuerySet(PolymorphicQuerySet):
-            def my_queryset_method(...):
+            def my_queryset_method(self):
                 ...
 
         class MyModel(PolymorphicModel):
-            my_objects=PolymorphicManager(MyQuerySet)
+            my_objects = PolymorphicManager.from_queryset(MyQuerySet)()
             ...

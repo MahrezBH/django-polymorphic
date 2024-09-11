@@ -1,24 +1,25 @@
 from django.contrib import admin
-from polymorphic.admin import PolymorphicParentModelAdmin, PolymorphicChildModelAdmin, PolymorphicChildModelFilter
 from pexp.models import *
+
+from polymorphic.admin import (
+    PolymorphicChildModelAdmin,
+    PolymorphicChildModelFilter,
+    PolymorphicParentModelAdmin,
+)
 
 
 class ProjectAdmin(PolymorphicParentModelAdmin):
-    base_model = Project
+    base_model = Project  # Can be set explicitly.
     list_filter = (PolymorphicChildModelFilter,)
     child_models = (Project, ArtProject, ResearchProject)
 
 
 class ProjectChildAdmin(PolymorphicChildModelAdmin):
-    base_model = Project
+    base_model = Project  # Can be set explicitly.
 
     # On purpose, only have the shared fields here.
     # The fields of the derived model should still be displayed.
-    base_fieldsets = (
-        ("Base fields", {
-            'fields': ('topic',)
-        }),
-    )
+    base_fieldsets = (("Base fields", {"fields": ("topic",)}),)
 
 
 admin.site.register(Project, ProjectAdmin)
@@ -27,13 +28,12 @@ admin.site.register(ResearchProject, ProjectChildAdmin)
 
 
 class UUIDModelAAdmin(PolymorphicParentModelAdmin):
-    base_model = UUIDModelA
     list_filter = (PolymorphicChildModelFilter,)
     child_models = (UUIDModelA, UUIDModelB)
 
 
 class UUIDModelAChildAdmin(PolymorphicChildModelAdmin):
-    base_model = UUIDModelA
+    pass
 
 
 admin.site.register(UUIDModelA, UUIDModelAAdmin)
@@ -42,13 +42,12 @@ admin.site.register(UUIDModelC, UUIDModelAChildAdmin)
 
 
 class ProxyAdmin(PolymorphicParentModelAdmin):
-    base_model = ProxyBase
     list_filter = (PolymorphicChildModelFilter,)
     child_models = (ProxyA, ProxyB)
 
 
 class ProxyChildAdmin(PolymorphicChildModelAdmin):
-    base_model = ProxyBase
+    pass
 
 
 admin.site.register(ProxyBase, ProxyAdmin)

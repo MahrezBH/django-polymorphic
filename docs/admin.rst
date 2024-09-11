@@ -1,7 +1,7 @@
 Django admin integration
 ========================
 
-Off course, it's possible to register individual polymorphic models in the Django admin interface.
+Of course, it's possible to register individual polymorphic models in the Django admin interface.
 However, to use these models in a single cohesive interface, some extra base classes are available.
 
 Setup
@@ -63,7 +63,7 @@ The models are taken from :ref:`advanced-features`.
 
     class ModelAChildAdmin(PolymorphicChildModelAdmin):
         """ Base admin class for all child models """
-        base_model = ModelA
+        base_model = ModelA  # Optional, explicitly set here.
 
         # By using these `base_...` attributes instead of the regular ModelAdmin `form` and `fieldsets`,
         # the additional fields of the child models are automatically added to the admin form.
@@ -75,13 +75,13 @@ The models are taken from :ref:`advanced-features`.
 
     @admin.register(ModelB)
     class ModelBAdmin(ModelAChildAdmin):
-        base_model = ModelB
+        base_model = ModelB  # Explicitly set here!
         # define custom features here
 
 
     @admin.register(ModelC)
     class ModelCAdmin(ModelBAdmin):
-        base_model = ModelC
+        base_model = ModelC  # Explicitly set here!
         show_in_index = True  # makes child model admin visible in main admin site
         # define custom features here
 
@@ -89,7 +89,7 @@ The models are taken from :ref:`advanced-features`.
     @admin.register(ModelA)
     class ModelAParentAdmin(PolymorphicParentModelAdmin):
         """ The parent model admin """
-        base_model = ModelA
+        base_model = ModelA  # Optional, explicitly set here.
         child_models = (ModelB, ModelC)
         list_filter = (PolymorphicChildModelFilter,)  # This is optional.
 
